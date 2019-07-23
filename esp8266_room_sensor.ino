@@ -3,44 +3,45 @@
 #include <EEPROM.h>
 #include <DallasTemperature.h>
 #include <PubSubClient.h>
+#include <ESP8266WebServer.h>
 
-#include "HttpServer.h"
-#include "MqttClient.h"
+#define STASSID "Hughes_House"
+#define STAPSK  "8172662079"
 
-const int TEMP_TIMEOUT = 10000;
-const String DEFAULT_MQTT_TOPIC = "sensors/temp/";
+#define TEMP_TIMEOUT 10000
 
-String ssid;
-String password;
-String mqtt_host;
-String mqtt_topic;
-String mqtt_user;
-String mqtt_pass;
-String name;
+const char* ssid = STASSID;
+const char* password = STAPSK;
+String mqtt_host = "192.168.1.10";
+String mqtt_user = "bhughes";
+String mqtt_pass = "Debian06.";
+String mqtt_topic = "sensors/temp/";
+String name = "undefined";
 
-// Create esp web server
-MqttClient mClient;
-HttpServer server(80, mClient, name);
+ESP8266WebServer server(80);
 
-// Create connection to temp sensor
-const int oneWireBus = 4;
+const int oneWireBus = 2;
 OneWire oneWire(oneWireBus);
 DallasTemperature sensors(&oneWire);
 
-// Create MQTT client
 WiFiClient http_client;
 PubSubClient mqtt_client(http_client);
-
 void setup() {
   Serial.begin(115200);
+
+  // prepare LED
+  pinMode(LED_BUILTIN, OUTPUT);
+  digitalWrite(LED_BUILTIN, 0);
 
   // Connect to WiFi network
   Serial.println();
   Serial.println();
-  Serial.print("Connecting to " + ssid);
+  Serial.print(F("Connecting to "));
+  Serial.println(ssid);
 
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
+
 
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
@@ -49,7 +50,8 @@ void setup() {
   Serial.println(F("WiFi connected"));
 
   // Start the server
-  server.setupRoutes();
+  server.on("/", HTTP_GET, handleRoot);
+  server.on("/", HTTP_POST, handlePost);
   server.begin();
   Serial.println(F("Server started"));
 
@@ -60,6 +62,33 @@ void setup() {
 
   // Setup mqtt client
   mqtt_client.setServer(mqtt_host.c_str(), 1883);
+}
+
+void handleRoot() {
+    formPrint();
+}
+
+void handlePost() {
+    if (server.arg("name") != NULL) {
+      name = server.arg("name");
+    }
+
+    formPrint();
+}
+
+void formPrint() {
+  server.send(
+      200,
+      "text/html",
+      "<form action=\"/\" method=\"POST\">"
+      "  Name: <input type=\"text\" name=\"name\" value=\"" + name + "\"><br><br>"
+      "  <h3>MQTT</h3>"
+      "  Host: <input type=\"text\" name=\"mqtt_host\" value=\"" + mqtt_host + "\"><br>"
+      "  User: <input type=\"text\" name=\"mqtt_user\" value=\"" + mqtt_user + "\"><br>"
+      "  Pass: <input type=\"password\" name=\"mqtt_pass\" value=\"" + mqtt_pass + "\"><br><br>"
+      "  <input type=\"submit\" value=\"save\">"
+      "</form"
+    );
 }
 
 void reconnect() {

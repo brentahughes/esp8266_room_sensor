@@ -19,9 +19,8 @@ String mqtt_pass;
 String name;
 
 // Create esp web server
-ESP8266WebServer server(80);
-HttpServer httpServer;
 MqttClient mClient;
+HttpServer server(80, mClient, name);
 
 // Create connection to temp sensor
 const int oneWireBus = 4;
@@ -50,8 +49,7 @@ void setup() {
   Serial.println(F("WiFi connected"));
 
   // Start the server
-  server.on("/", HTTP_GET, httpServer.handleRoot);
-  server.on("/", HTTP_POST, httpServer.handlePost);
+  server.setupRoutes();
   server.begin();
   Serial.println(F("Server started"));
 
@@ -62,9 +60,6 @@ void setup() {
 
   // Setup mqtt client
   mqtt_client.setServer(mqtt_host.c_str(), 1883);
-
-  mClient(mqtt_host, mqtt_user, mqtt_pass, mqtt_topic);
-  httpServer(server, name, mClient);
 }
 
 void reconnect() {

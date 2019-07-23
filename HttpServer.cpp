@@ -1,9 +1,12 @@
 #include <Arduino.h>
 #include <ESP8266WebServer.h>
 #include "HttpServer.h"
+#include "MqttClient.h"
 
-HttpServer::HttpServer(ESP8266WebServer webServer, MqttClient mqttClient, String name) {
-  server = webServer;
+HttpServer::HttpServer(int port, MqttClient mqttClient, String name) {
+  ESP8266WebServer s(port);
+  server = s;
+
   name = name;
   mClient = MqttClient;
 }
@@ -24,12 +27,25 @@ void HttpServer::formPrint() {
 }
 
 void HttpServer::handleRoot() {
-    formPrint();
+  formPrint();
 }
 
 void HttpServer::handlePost() {
-    if (server.arg("name") != NULL) {
-      name = server.arg("name");
-    }
-    formPrint();
+  if (server.arg("name") != NULL) {
+    name = server.arg("name");
+  }
+  formPrint();
+}
+
+void HttpServer::setupRoutes() {
+  server.on("/", HTTP_GET, handleRoot);
+  server.on("/", HTTP_POST, handlePost);
+}
+
+void HttpServer::begin() {
+  server.begin();
+}
+
+void HttpServer::handleClient() {
+  server.handleClient();
 }

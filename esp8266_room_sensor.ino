@@ -1,12 +1,13 @@
 #include <FS.h>
 #include <ArduinoOTA.h>
 #include <ESP8266WebServer.h>
-#include "TempSensor.h"
 #include <WiFiManager.h>
 #include <DNSServer.h>
 #include <ArduinoJson.h>
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
+#include <OneWire.h>
+#include <DallasTemperature.h>
 
 // Declare functions
 void formPrint();
@@ -35,7 +36,10 @@ long lastSensorCheck = 0;
 
 ESP8266WebServer server(80);
 WiFiManager wifiManager;
-TempSensor tempSensor(4);
+
+
+OneWire oneWire(D2);
+DallasTemperature sensors(&oneWire);
 
 WiFiClient espClient;
 PubSubClient mqttClient(espClient);
@@ -49,6 +53,7 @@ void saveConfigCallback () {
 
 void setup() {
   Serial.begin(115200);
+  sensors.begin();
 
   if (SPIFFS.begin()) {
     Serial.println("Mounted filesystem");
@@ -102,7 +107,10 @@ void loop() {
   long now = millis();
   if (now - lastSensorCheck > TEMP_TIMEOUT) {
     lastSensorCheck = now;
-    float temp = tempSensor.read();
+    sensors.requestTemperatures();
+    float temp = sensors.getTempFByIndex(0);
+    Serial.print("temp: ");
+    Serial.println(temp);
     publishSensorInfo(temp);
   }
 
